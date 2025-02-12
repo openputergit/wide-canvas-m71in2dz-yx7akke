@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delhi ParkEasy</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .glass-effect {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.8);
+        }
+        .parking-spot {
+            transition: all 0.3s ease;
+        }
+        .parking-spot.available:hover {
+            transform: scale(1.02);
+        }
+        .parking-spot.occupied {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <nav class="glass-effect fixed w-full z-50 px-6 py-4 flex justify-between items-center shadow-sm">
+        <h1 class="text-2xl font-bold text-blue-600">Delhi ParkEasy</h1>
+        <div class="flex gap-4">
+            <button id="myBookingsBtn" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200">
+                <i class="bi bi-ticket-perforated"></i>
+                My Bookings
+            </button>
+            <button id="listSpotBtn" class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">
+                List Your Spot
+            </button>
+        </div>
+    </nav>
+
+    <main class="pt-24 px-6 pb-8">
+        <!-- Location Selector -->
+        <div class="mb-8">
+            <select id="locationSelect" class="w-full md:w-80 px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-400">
+                <option value="">Select Location in Delhi</option>
+                <option value="cp">Connaught Place</option>
+                <option value="karolbagh">Karol Bagh</option>
+                <option value="chandnichowk">Chandni Chowk</option>
+                <option value="southex">South Extension</option>
+            </select>
+        </div>
+
+        <!-- Parking Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="parkingGrid">
+            <!-- Parking spots will be populated here -->
+        </div>
+
+        <!-- Booking Modal -->
+        <div id="bookingModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50">
+            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-11/12 max-w-md bg-white rounded-xl p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold">Book Parking Spot</h2>
+                    <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <p class="text-gray-600">Spot Number</p>
+                        <p class="text-xl font-bold" id="spotNumber"></p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600">Rate</p>
+                        <p class="text-lg">₹50/hour</p>
+                    </div>
+                    <div>
+                        <label class="block text-gray-600 mb-1">Duration (hours)</label>
+                        <input type="number" id="duration" min="1" max="24" value="1" 
+                               class="w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    </div>
+                    <div class="pt-4">
+                        <button onclick="confirmBooking()" class="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                            Confirm Booking
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- List Spot Modal -->
+        <div id="listSpotModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50">
+            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-11/12 max-w-md bg-white rounded-xl p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold">List Your Parking Spot</h2>
+                    <button onclick="closeListSpotModal()" class="text-gray-500 hover:text-gray-700">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                <form id="listSpotForm" class="space-y-4">
+                    <div>
+                        <label class="block text-gray-600 mb-1">Location</label>
+                        <input type="text" required placeholder="Full address" 
+                               class="w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    </div>
+                    <div>
+                        <label class="block text-gray-600 mb-1">Hourly Rate (₹)</label>
+                        <input type="number" required min="20" 
+                               class="w-full px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    </div>
+                    <div>
+                        <label class="block text-gray-600 mb-1">Available Times</label>
+                        <div class="grid grid-cols-2 gap-4">
+                            <input type="time" required 
+                                   class="px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-400">
+                            <input type="time" required 
+                                   class="px-4 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        List Spot
+                    </button>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let selectedSpot = null;
+        const parkingSpots = [];
+
+        // Generate parking spots
+        function generateParkingSpots() {
+            const grid = document.getElementById('parkingGrid');
+            grid.innerHTML = '';
+            
+            for (let i = 1; i <= 20; i++) {
+                const isAvailable = Math.random() > 0.3;
+                const spot = document.createElement('div');
+                spot.className = `parking-spot p-6 bg-white rounded-xl shadow-sm ${isAvailable ? 'available hover:shadow-md' : 'occupied'}`;
+                spot.innerHTML = `
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-semibold">Spot ${i}</h3>
+                        <span class="px-3 py-1 rounded-full text-sm ${isAvailable ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}">
+                            ${isAvailable ? 'Available' : 'Occupied'}
+                        </span>
+                    </div>
+                    <div class="space-y-2">
+                        <p class="text-gray-600">Rate: ₹50/hour</p>
+                        ${isAvailable ? `
+                            <button onclick="showBookingModal(${i})" class="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                Book Now
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+                grid.appendChild(spot);
+                parkingSpots.push({ id: i, available: isAvailable });
+            }
+        }
+
+        // Location select handler
+        document.getElementById('locationSelect').addEventListener('change', generateParkingSpots);
+
+        // Modal handlers
+        function showBookingModal(spotId) {
+            selectedSpot = spotId;
+            document.getElementById('spotNumber').textContent = `Spot ${spotId}`;
+            document.getElementById('bookingModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('bookingModal').classList.add('hidden');
+        }
+
+        function showListSpotModal() {
+            document.getElementById('listSpotModal').classList.remove('hidden');
+        }
+
+        function closeListSpotModal() {
+            document.getElementById('listSpotModal').classList.add('hidden');
+        }
+
+        // Booking confirmation
+        function confirmBooking() {
+            const duration = document.getElementById('duration').value;
+            const total = duration * 50;
+            
+            // In a real app, this would connect to a payment gateway
+            alert(`Booking confirmed for Spot ${selectedSpot}\nDuration: ${duration} hours\nTotal: ₹${total}`);
+            
+            closeModal();
+            generateParkingSpots(); // Refresh spots
+        }
+
+        // Event Listeners
+        document.getElementById('listSpotBtn').addEventListener('click', showListSpotModal);
+        document.getElementById('listSpotForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            alert('Your spot has been listed successfully!');
+            closeListSpotModal();
+        });
+
+        // Initialize
+        generateParkingSpots();
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
